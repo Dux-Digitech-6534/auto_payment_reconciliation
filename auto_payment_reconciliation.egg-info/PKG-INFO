@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: auto_payment_reconciliation
+Version: 0.0.1
+Summary: Supplier-wise automatic payment reconciliation for ERPNext
+Author: Dux Digitech
+Author-email: Dux Digitech <support@duxdigitech.com>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Dynamic: author
+
+# Auto Payment Reconciliation
+
+Supplier-wise automatic payment reconciliation for ERPNext.
+
+This app adds a Desk page at `auto_payment_reconciliation`, persistent run tracking, supplier-level rows, queue status, allocation previews, and reconciliation using ERPNext's native Payment Reconciliation implementation.
+

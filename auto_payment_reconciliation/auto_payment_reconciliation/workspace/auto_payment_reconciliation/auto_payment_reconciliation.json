@@ -1,0 +1,68 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"auto_payment_reconciliation_shortcuts\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Auto Payment Reconciliation\",\"col\":3}}]",
+ "creation": "2026-05-26 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "sync",
+ "idx": 0,
+ "indicator_color": "blue",
+ "is_hidden": 0,
+ "label": "Auto Payment Reconciliation",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Auto Payment Reconciliation",
+   "link_count": 0,
+   "link_to": "auto_payment_reconciliation",
+   "onboard": 0,
+   "type": "Page"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Auto Payment Reconciliation Run",
+   "link_count": 0,
+   "link_to": "Auto Payment Reconciliation Run",
+   "onboard": 0,
+   "type": "DocType"
+  }
+ ],
+ "modified": "2026-05-26 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Auto Payment Reconciliation",
+ "name": "Auto Payment Reconciliation",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 25.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "",
+   "format": "",
+   "label": "Auto Payment Reconciliation",
+   "link_to": "auto_payment_reconciliation",
+   "stats_filter": "[]",
+   "type": "Page"
+  }
+ ],
+ "title": "Auto Payment Reconciliation"
+}

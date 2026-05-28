@@ -1,0 +1,282 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "",
+ "creation": "2026-05-26 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "payable_account",
+  "default_advance_account",
+  "date_section",
+  "from_date",
+  "to_date",
+  "status_section",
+  "status",
+  "requested_by",
+  "requested_on",
+  "started_by",
+  "started_on",
+  "column_break_status",
+  "reconciled_by",
+  "reconciled_on",
+  "completed_on",
+  "duration_seconds",
+  "duration_display",
+  "progress_section",
+  "total_entries",
+  "processed_entries",
+  "progress_percent",
+  "remaining_time",
+  "last_updated_on",
+  "current_supplier",
+  "queue_section",
+  "queue_position",
+  "estimated_start",
+  "estimated_duration",
+  "error_log",
+  "supplier_entries_section",
+  "supplier_entries"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "payable_account",
+   "fieldtype": "Link",
+   "label": "Payable Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "default_advance_account",
+   "fieldtype": "Link",
+   "label": "Default Advance Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "date_section",
+   "fieldtype": "Section Break",
+   "label": "Date Filters"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nQueued\nRunning\nCompleted\nFailed\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Link",
+   "label": "Requested By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requested_on",
+   "fieldtype": "Datetime",
+   "label": "Requested On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "started_by",
+   "fieldtype": "Link",
+   "label": "Started By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "started_on",
+   "fieldtype": "Datetime",
+   "label": "Started On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reconciled_by",
+   "fieldtype": "Link",
+   "label": "Reconciled By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reconciled_on",
+   "fieldtype": "Datetime",
+   "label": "Reconciled On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "duration_seconds",
+   "fieldtype": "Int",
+   "label": "Duration Seconds",
+   "read_only": 1
+  },
+  {
+   "fieldname": "duration_display",
+   "fieldtype": "Data",
+   "label": "Duration",
+   "read_only": 1
+  },
+  {
+   "fieldname": "progress_section",
+   "fieldtype": "Section Break",
+   "label": "Progress"
+  },
+  {
+   "fieldname": "total_entries",
+   "fieldtype": "Int",
+   "label": "Total Entries",
+   "read_only": 1
+  },
+  {
+   "fieldname": "processed_entries",
+   "fieldtype": "Int",
+   "label": "Processed Entries",
+   "read_only": 1
+  },
+  {
+   "fieldname": "progress_percent",
+   "fieldtype": "Percent",
+   "label": "Progress Percent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remaining_time",
+   "fieldtype": "Data",
+   "label": "Remaining Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_updated_on",
+   "fieldtype": "Datetime",
+   "label": "Last Updated On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "current_supplier",
+   "fieldtype": "Link",
+   "label": "Current Supplier",
+   "options": "Supplier",
+   "read_only": 1
+  },
+  {
+   "fieldname": "queue_section",
+   "fieldtype": "Section Break",
+   "label": "Queue"
+  },
+  {
+   "fieldname": "queue_position",
+   "fieldtype": "Int",
+   "label": "Queue Position",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estimated_start",
+   "fieldtype": "Datetime",
+   "label": "Estimated Start",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estimated_duration",
+   "fieldtype": "Data",
+   "label": "Estimated Duration",
+   "read_only": 1
+  },
+  {
+   "fieldname": "error_log",
+   "fieldtype": "Long Text",
+   "label": "Error Log",
+   "read_only": 1
+  },
+  {
+   "fieldname": "supplier_entries_section",
+   "fieldtype": "Section Break",
+   "label": "Supplier Entries"
+  },
+  {
+   "fieldname": "supplier_entries",
+   "fieldtype": "Table",
+   "label": "Supplier Entries",
+   "options": "Auto Payment Reconciliation Supplier Entry"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-26 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Auto Payment Reconciliation",
+ "name": "Auto Payment Reconciliation Run",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

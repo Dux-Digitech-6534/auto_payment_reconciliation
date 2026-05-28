@@ -1,0 +1,15 @@
+{
+ "app_name": "auto_payment_reconciliation",
+ "creation": "2026-05-26 00:00:00.000000",
+ "custom": 0,
+ "docstatus": 0,
+ "doctype": "Module Def",
+ "idx": 0,
+ "is_standard": 1,
+ "modified": "2026-05-26 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module_name": "Auto Payment Reconciliation",
+ "name": "Auto Payment Reconciliation",
+ "owner": "Administrator",
+ "package": "Auto Payment Reconciliation"
+}

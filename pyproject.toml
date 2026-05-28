@@ -1,0 +1,32 @@
+[project]
+name = "auto_payment_reconciliation"
+authors = [
+    { name = "Dux Digitech", email = "support@duxdigitech.com" }
+]
+description = "Supplier-wise automatic payment reconciliation for ERPNext"
+requires-python = ">=3.10"
+readme = "README.md"
+version = "0.0.1"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.bench.dev-dependencies]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["auto_payment_reconciliation*"]
+
+[tool.setuptools.package-data]
+auto_payment_reconciliation = ["**/*.json", "**/*.js", "**/*.css", "**/*.txt", "**/*.md"]
