@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "selected",
+  "party_type",
   "supplier",
   "supplier_name",
   "supplier_id",
@@ -35,22 +36,30 @@
    "label": "Select"
   },
   {
-   "fieldname": "supplier",
+   "default": "Supplier",
+   "fieldname": "party_type",
    "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Party Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Dynamic Link",
    "in_list_view": 1,
-   "label": "Supplier",
-   "options": "Supplier"
+   "label": "Party",
+   "options": "party_type"
   },
   {
    "fieldname": "supplier_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Supplier Name"
+   "label": "Party Name"
   },
   {
    "fieldname": "supplier_id",
    "fieldtype": "Data",
-   "label": "Supplier ID"
+   "label": "Party ID"
   },
   {
    "fieldname": "invoices_count",
@@ -159,4 +168,3 @@
  "sort_order": "DESC",
  "states": []
 }
-

@@ -7,6 +7,7 @@ auto_payment_reconciliation/api.py
 auto_payment_reconciliation/hooks.py
 auto_payment_reconciliation/modules.txt
 auto_payment_reconciliation/patches.txt
+auto_payment_reconciliation/test_data.py
 auto_payment_reconciliation.egg-info/PKG-INFO
 auto_payment_reconciliation.egg-info/SOURCES.txt
 auto_payment_reconciliation.egg-info/dependency_links.txt

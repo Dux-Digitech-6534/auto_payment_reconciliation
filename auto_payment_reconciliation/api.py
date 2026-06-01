@@ -18,6 +18,49 @@ ROW_DOCTYPE = "Auto Payment Reconciliation Supplier Entry"
 BAD_LITERAL_RUN_NAME = "APR-" + "#" * 5
 
 
+def _payment_type(filters):
+	# The page is intentionally supplier/payables-only. Keep any old payment_type
+	# metadata harmless by resolving all public flows to native Pay context.
+	return "Pay"
+
+
+def _payment_context(filters):
+	payment_type = _payment_type(filters)
+	if payment_type == "Receive":
+		return frappe._dict({
+			"payment_type": "Receive",
+			"party_type": "Customer",
+			"party_label": _("Customer Name"),
+			"invoice_doctype": "Sales Invoice",
+			"invoice_party_field": "customer",
+			"invoice_account_field": "debit_to",
+			"default_account_field": "default_receivable_account",
+			"party_account_type": "Receivable",
+			"root_type": "Asset",
+			"payment_entry_type": "Receive",
+			"journal_positive_side": "credit",
+		})
+	if payment_type == "Internal Transfer":
+		return frappe._dict({
+			"payment_type": "Internal Transfer",
+			"party_type": None,
+			"party_label": _("Supplier Name"),
+		})
+	return frappe._dict({
+		"payment_type": "Pay",
+		"party_type": "Supplier",
+		"party_label": _("Supplier Name"),
+		"invoice_doctype": "Purchase Invoice",
+		"invoice_party_field": "supplier",
+		"invoice_account_field": "credit_to",
+		"default_account_field": "default_payable_account",
+		"party_account_type": "Payable",
+		"root_type": "Liability",
+		"payment_entry_type": "Pay",
+		"journal_positive_side": "debit",
+	})
+
+
 def _parse_filters(filters=None):
 	if not filters:
 		return frappe._dict()
@@ -40,7 +83,8 @@ def _is_bad_literal_run_name(name):
 
 def _run_filters_match(run, filters):
 	return (
-		(run.payable_account or None) == (filters.get("payable_account") or None)
+		(run.get("payment_type") or "Pay") == _payment_type(filters)
+		and (run.payable_account or None) == (filters.get("payable_account") or None)
 		and (run.default_advance_account or None) == (filters.get("default_advance_account") or None)
 		and _date_value(run.from_date) == _date_value(filters.get("from_date"))
 		and _date_value(run.to_date) == _date_value(filters.get("to_date"))
@@ -134,7 +178,12 @@ def _doc_type(value):
 
 
 def _invoice_refs(refs):
-	return [ref for ref in refs or [] if _doc_type(ref.get("reference_doctype") or ref.get("doctype") or ref.get("invoice_type")) == "Purchase Invoice"]
+	return [
+		ref
+		for ref in refs or []
+		if _doc_type(ref.get("reference_doctype") or ref.get("doctype") or ref.get("invoice_type"))
+		in {"Purchase Invoice", "Sales Invoice", "Journal Entry"}
+	]
 
 
 def _payment_refs(refs):
@@ -202,14 +251,18 @@ def _save_run_with_retry(run_name, update_fn, retries=1):
 		raise last_error
 
 
-def _get_payable_account(company, supplier, filters):
+def _get_reconciliation_account(company, party, filters):
+	context = _payment_context(filters)
+	if not context.party_type:
+		return None, None
+
 	if filters.get("payable_account"):
 		return filters.payable_account, filters.get("default_advance_account")
 
 	account = None
 	default_advance_account = filters.get("default_advance_account")
 	try:
-		party_account = get_party_account(company, "Supplier", supplier, include_advance=1)
+		party_account = get_party_account(company, context.party_type, party, include_advance=1)
 		if isinstance(party_account, (list, tuple)):
 			account = party_account[0]
 			default_advance_account = default_advance_account or (party_account[1] if len(party_account) > 1 else None)
@@ -218,20 +271,28 @@ def _get_payable_account(company, supplier, filters):
 	except Exception:
 		account = None
 
-	account = account or frappe.db.get_value("Company", company, "default_payable_account")
+	account = account or frappe.db.get_value("Company", company, context.default_account_field)
 	return account, default_advance_account
 
 
-def _new_payment_reconciliation(company, supplier, filters):
-	payable_account, default_advance_account = _get_payable_account(company, supplier, filters)
-	if not payable_account:
-		frappe.throw(_("Missing payable account for supplier {0}.").format(supplier))
+def _get_payable_account(company, supplier, filters):
+	return _get_reconciliation_account(company, supplier, filters)
+
+
+def _new_payment_reconciliation(company, party, filters):
+	context = _payment_context(filters)
+	if not context.party_type:
+		frappe.throw(_("Internal Transfer does not have a party/invoice context in native Payment Reconciliation."))
+
+	reconciliation_account, default_advance_account = _get_reconciliation_account(company, party, filters)
+	if not reconciliation_account:
+		frappe.throw(_("Missing {0} account for {1} {2}.").format(context.party_account_type.lower(), context.party_type, party))
 
 	pr = frappe.get_doc("Payment Reconciliation")
 	pr.company = company
-	pr.party_type = "Supplier"
-	pr.party = supplier
-	pr.receivable_payable_account = payable_account
+	pr.party_type = context.party_type
+	pr.party = party
+	pr.receivable_payable_account = reconciliation_account
 	pr.default_advance_account = default_advance_account
 	pr.from_invoice_date = filters.get("from_date")
 	pr.to_invoice_date = filters.get("to_date")
@@ -248,26 +309,25 @@ def _load_native_entries(company, supplier, filters):
 	return pr
 
 
-def _serialize_invoice(row, payable_account=None):
+def _serialize_invoice(row, reconciliation_account=None):
 	invoice_number = row.get("invoice_number")
+	invoice_type = _doc_type(row.get("invoice_type") or "Purchase Invoice")
 	due_date = None
-	account = payable_account
-	if row.get("invoice_type") == "Purchase Invoice" and invoice_number:
-		due_date, account = frappe.db.get_value(
-			"Purchase Invoice", invoice_number, ["due_date", "credit_to"]
-		) or (None, payable_account)
+	account = reconciliation_account
+	if invoice_type in {"Purchase Invoice", "Sales Invoice"} and invoice_number:
+		field = "credit_to" if invoice_type == "Purchase Invoice" else "debit_to"
+		due_date, account = frappe.db.get_value(invoice_type, invoice_number, ["due_date", field]) or (None, reconciliation_account)
 
-	doctype = _doc_type(row.get("invoice_type") or "Purchase Invoice")
 	return {
-		"doctype": doctype,
-		"reference_doctype": doctype,
-		"invoice_type": doctype,
+		"doctype": invoice_type,
+		"reference_doctype": invoice_type,
+		"invoice_type": invoice_type,
 		"invoice_number": invoice_number,
 		"posting_date": row.get("invoice_date"),
 		"due_date": due_date,
 		"outstanding_amount": flt(row.get("outstanding_amount")),
 		"currency": row.get("currency"),
-		"account": account or payable_account,
+		"account": account or reconciliation_account,
 	}
 
 
@@ -300,8 +360,16 @@ def _safe_native_entries(company, supplier, filters):
 		return None, str(exc)
 
 
+def _party_name(party, party_type="Supplier"):
+	if party_type == "Customer":
+		return frappe.db.get_value("Customer", party, "customer_name") or party
+	if party_type == "Supplier":
+		return frappe.db.get_value("Supplier", party, "supplier_name") or party
+	return party
+
+
 def _supplier_name(supplier):
-	return frappe.db.get_value("Supplier", supplier, "supplier_name") or supplier
+	return _party_name(supplier, "Supplier")
 
 
 def _user_display(user):
@@ -335,34 +403,55 @@ def _allocation_preview_from_pr(pr):
 
 
 def _build_supplier_row(company, supplier, filters):
+	context = _payment_context(filters)
+	if not context.party_type:
+		return frappe._dict(_apply_row_eligibility({
+			"party_type": "",
+			"supplier": supplier,
+			"supplier_name": supplier or _("Internal Transfer"),
+			"supplier_id": supplier,
+			"invoices_count": 0,
+			"payments_count": 0,
+			"invoice_amount": 0,
+			"payment_amount": 0,
+			"difference": 0,
+			"match_status": "Needs Review",
+			"allocation_status": "Pending Review",
+			"invoice_refs_json": "[]",
+			"payment_refs_json": "[]",
+			"allocation_refs_json": "[]",
+			"remarks": _("Internal Transfer has no invoice-side party context in native Payment Reconciliation."),
+			"last_error": "",
+		}))
+
 	currency = _company_currency(company)
 	precision = _currency_precision(currency)
 	pr, error = _safe_native_entries(company, supplier, filters)
-	payable_account, _default_advance_account = _get_payable_account(company, supplier, filters)
+	reconciliation_account, _default_advance_account = _get_reconciliation_account(company, supplier, filters)
+	party_name = _party_name(supplier, context.party_type)
 
 	if error:
-		return frappe._dict(
-			_apply_row_eligibility({
-				"supplier": supplier,
-				"supplier_name": _supplier_name(supplier),
-				"supplier_id": supplier,
-				"invoices_count": 0,
-				"payments_count": 0,
-				"invoice_amount": 0,
-				"payment_amount": 0,
-				"difference": 0,
-				"match_status": "Needs Review",
-				"allocation_status": "Error",
-				"invoice_refs_json": "[]",
-				"payment_refs_json": "[]",
-				"allocation_refs_json": "[]",
-				"remarks": error,
-				"last_error": error,
-			})
-		)
+		return frappe._dict(_apply_row_eligibility({
+			"party_type": context.party_type,
+			"supplier": supplier,
+			"supplier_name": party_name,
+			"supplier_id": supplier,
+			"invoices_count": 0,
+			"payments_count": 0,
+			"invoice_amount": 0,
+			"payment_amount": 0,
+			"difference": 0,
+			"match_status": "Needs Review",
+			"allocation_status": "Error",
+			"invoice_refs_json": "[]",
+			"payment_refs_json": "[]",
+			"allocation_refs_json": "[]",
+			"remarks": error,
+			"last_error": error,
+		}))
 
-	invoices = _invoice_refs([_serialize_invoice(d.as_dict(), payable_account) for d in pr.invoices])
-	payments = _payment_refs([_serialize_payment(d.as_dict(), payable_account) for d in pr.payments])
+	invoices = [_serialize_invoice(d.as_dict(), reconciliation_account) for d in pr.invoices]
+	payments = _payment_refs([_serialize_payment(d.as_dict(), reconciliation_account) for d in pr.payments])
 	invoice_amount = flt(sum(flt(d.get("outstanding_amount")) for d in invoices), precision)
 	payment_amount = flt(sum(flt(d.get("unallocated_amount")) for d in payments), precision)
 	difference = flt(invoice_amount - payment_amount, precision)
@@ -373,8 +462,8 @@ def _build_supplier_row(company, supplier, filters):
 	allocation_status = "Pending Review"
 	allocations = []
 
-	if not payable_account:
-		remarks.append(_("Missing payable account"))
+	if not reconciliation_account:
+		remarks.append(_("Missing {0} account").format(context.party_account_type.lower()))
 	elif len(currencies) > 1:
 		remarks.append(_("Currency mismatch"))
 	elif invoice_amount <= 0 and payment_amount > 0:
@@ -396,72 +485,79 @@ def _build_supplier_row(company, supplier, filters):
 			allocation_status = "Error"
 			remarks.append(str(exc))
 
-	return frappe._dict(
-		_apply_row_eligibility({
-			"supplier": supplier,
-			"supplier_name": _supplier_name(supplier),
-			"supplier_id": supplier,
-			"invoices_count": len(invoices),
-			"payments_count": len(payments),
-			"invoice_amount": invoice_amount,
-			"payment_amount": payment_amount,
-			"difference": difference,
-			"match_status": match_status,
-			"allocation_status": allocation_status,
-			"invoice_refs_json": _json_dumps(invoices),
-			"payment_refs_json": _json_dumps(payments),
-			"allocation_refs_json": _json_dumps(allocations),
-			"remarks": "; ".join(remarks),
-			"last_error": "; ".join(remarks) if allocation_status == "Error" else "",
-		})
-	)
+	return frappe._dict(_apply_row_eligibility({
+		"party_type": context.party_type,
+		"supplier": supplier,
+		"supplier_name": party_name,
+		"supplier_id": supplier,
+		"invoices_count": len(invoices),
+		"payments_count": len(payments),
+		"invoice_amount": invoice_amount,
+		"payment_amount": payment_amount,
+		"difference": difference,
+		"match_status": match_status,
+		"allocation_status": allocation_status,
+		"invoice_refs_json": _json_dumps(invoices),
+		"payment_refs_json": _json_dumps(payments),
+		"allocation_refs_json": _json_dumps(allocations),
+		"remarks": "; ".join(remarks),
+		"last_error": "; ".join(remarks) if allocation_status == "Error" else "",
+	}))
 
 
 def _candidate_suppliers(company, filters):
-	suppliers = set()
-	pi_filters = {
+	context = _payment_context(filters)
+	if not context.party_type:
+		return []
+
+	parties = set()
+	invoice_filters = {
 		"company": company,
 		"docstatus": 1,
 		"outstanding_amount": (">", 0),
 	}
-	if filters.get("from_date"):
-		pi_filters["posting_date"] = (">=", filters.from_date)
-	if filters.get("to_date"):
-		if "posting_date" in pi_filters:
-			pi_filters["posting_date"] = ("between", [filters.from_date, filters.to_date])
-		else:
-			pi_filters["posting_date"] = ("<=", filters.to_date)
+	if filters.get("from_date") and filters.get("to_date"):
+		invoice_filters["posting_date"] = ("between", [filters.from_date, filters.to_date])
+	elif filters.get("from_date"):
+		invoice_filters["posting_date"] = (">=", filters.from_date)
+	elif filters.get("to_date"):
+		invoice_filters["posting_date"] = ("<=", filters.to_date)
 
-	for row in frappe.get_all("Purchase Invoice", filters=pi_filters, pluck="supplier"):
+	for row in frappe.get_all(context.invoice_doctype, filters=invoice_filters, pluck=context.invoice_party_field):
 		if row:
-			suppliers.add(row)
+			parties.add(row)
 
 	pe_filters = {
 		"company": company,
 		"docstatus": 1,
-		"party_type": "Supplier",
+		"payment_type": context.payment_entry_type,
+		"party_type": context.party_type,
 		"unallocated_amount": (">", 0),
 	}
-	if filters.get("from_date"):
+	if filters.get("from_date") and filters.get("to_date"):
+		pe_filters["posting_date"] = ("between", [filters.from_date, filters.to_date])
+	elif filters.get("from_date"):
 		pe_filters["posting_date"] = (">=", filters.from_date)
-	if filters.get("to_date"):
-		if "posting_date" in pe_filters:
-			pe_filters["posting_date"] = ("between", [filters.from_date, filters.to_date])
-		else:
-			pe_filters["posting_date"] = ("<=", filters.to_date)
+	elif filters.get("to_date"):
+		pe_filters["posting_date"] = ("<=", filters.to_date)
 
 	for row in frappe.get_all("Payment Entry", filters=pe_filters, pluck="party"):
 		if row:
-			suppliers.add(row)
+			parties.add(row)
 
 	je = frappe.qb.DocType("Journal Entry")
 	jea = frappe.qb.DocType("Journal Entry Account")
+	positive_amount = (
+		(jea.debit_in_account_currency - jea.credit_in_account_currency).gt(0)
+		if context.journal_positive_side == "debit"
+		else (jea.credit_in_account_currency - jea.debit_in_account_currency).gt(0)
+	)
 	conditions = [
 		je.company == company,
 		je.docstatus == 1,
-		jea.party_type == "Supplier",
+		jea.party_type == context.party_type,
 		((jea.reference_type == "") | jea.reference_type.isnull()),
-		(jea.debit_in_account_currency - jea.credit_in_account_currency).gt(0),
+		positive_amount,
 	]
 	if filters.get("from_date"):
 		conditions.append(je.posting_date >= filters.from_date)
@@ -470,7 +566,7 @@ def _candidate_suppliers(company, filters):
 	if filters.get("payable_account"):
 		conditions.append(jea.account == filters.payable_account)
 
-	je_suppliers = (
+	je_parties = (
 		frappe.qb.from_(je)
 		.inner_join(jea)
 		.on(jea.parent == je.name)
@@ -478,11 +574,11 @@ def _candidate_suppliers(company, filters):
 		.where(Criterion.all(conditions))
 		.distinct()
 	).run(as_dict=True)
-	for row in je_suppliers:
+	for row in je_parties:
 		if row.party:
-			suppliers.add(row.party)
+			parties.add(row.party)
 
-	return sorted(suppliers, key=lambda supplier: (_supplier_name(supplier) or supplier).lower())
+	return sorted(parties, key=lambda party: (_party_name(party, context.party_type) or party).lower())
 
 
 def _make_or_update_run(company, filters):
@@ -502,6 +598,7 @@ def _make_or_update_run(company, filters):
 		return run
 
 	run.company = company
+	run.payment_type = _payment_type(filters)
 	run.payable_account = filters.get("payable_account")
 	run.default_advance_account = filters.get("default_advance_account")
 	run.from_date = filters.get("from_date")
@@ -536,7 +633,7 @@ def _find_supplier_row(run, supplier):
 
 def _update_child_row(row, values):
 	for fieldname, value in values.items():
-		if fieldname in {"supplier", "supplier_name", "supplier_id", "invoices_count", "payments_count", "invoice_amount", "payment_amount", "difference", "match_status", "allocation_status", "invoice_refs_json", "payment_refs_json", "allocation_refs_json", "remarks", "last_error", "reconciled_by", "reconciled_on", "duration_seconds", "duration_display"}:
+		if fieldname in {"party_type", "supplier", "supplier_name", "supplier_id", "invoices_count", "payments_count", "invoice_amount", "payment_amount", "difference", "match_status", "allocation_status", "invoice_refs_json", "payment_refs_json", "allocation_refs_json", "remarks", "last_error", "reconciled_by", "reconciled_on", "duration_seconds", "duration_display"}:
 			row.set(fieldname, value)
 
 
@@ -556,6 +653,7 @@ def _refresh_supplier_row(run, supplier, filters):
 def _run_filters(run):
 	return frappe._dict(
 		{
+			"payment_type": "Pay",
 			"payable_account": run.payable_account,
 			"default_advance_account": run.default_advance_account,
 			"from_date": run.from_date,
@@ -584,6 +682,9 @@ def get_unreconciled_entries(company, filters=None):
 		"run_name": run.name,
 		"company": company,
 		"currency": _company_currency(company),
+		"payment_type": _payment_type(filters),
+		"party_type": _payment_context(filters).party_type,
+		"party_label": _payment_context(filters).party_label,
 		"rows": _supplier_rows(run),
 		"status": get_reconciliation_status(run_name=run.name),
 	}
@@ -612,8 +713,9 @@ def get_supplier_details(company, supplier, filters=None):
 		{
 			"company": company,
 			"supplier": supplier,
-			"supplier_name": summary.get("supplier_name") or _supplier_name(supplier),
+			"supplier_name": summary.get("supplier_name") or _party_name(supplier, _payment_context(filters).party_type or "Supplier"),
 			"supplier_id": supplier,
+			"party_type": summary.get("party_type") or _payment_context(filters).party_type,
 			"run_name": run.name if run else run_name,
 		}
 	)
@@ -670,7 +772,7 @@ def allocate_selected(run_name, suppliers):
 				result["failed"] += 1
 				result["errors"].append({"supplier": supplier, "error": str(exc)})
 				if not row:
-					row = run.append("supplier_entries", {"supplier": supplier, "supplier_name": _supplier_name(supplier), "supplier_id": supplier})
+					row = run.append("supplier_entries", {"party_type": _payment_context(filters).party_type, "supplier": supplier, "supplier_name": _party_name(supplier, _payment_context(filters).party_type or "Supplier"), "supplier_id": supplier})
 				row.allocation_status = "Error"
 				row.last_error = str(exc)
 		return result
@@ -1083,6 +1185,12 @@ def get_reconciliation_status(run_name=None, company=None):
 			"name",
 			"company",
 			"status",
+			"payment_type",
+			"requested_by",
+			"requested_on",
+			"queue_position",
+			"estimated_start",
+			"estimated_duration",
 			"started_by",
 			"started_on",
 			"reconciled_by",
@@ -1109,6 +1217,12 @@ def get_reconciliation_status(run_name=None, company=None):
 				"name",
 				"company",
 				"status",
+				"payment_type",
+				"requested_by",
+				"requested_on",
+				"queue_position",
+				"estimated_start",
+				"estimated_duration",
 				"started_by",
 				"started_on",
 				"reconciled_by",
@@ -1131,7 +1245,10 @@ def get_reconciliation_status(run_name=None, company=None):
 
 	if active:
 		active["started_by_full_name"] = _user_display(active.get("started_by"))
+		active["requested_by_full_name"] = _user_display(active.get("requested_by"))
 		active["reconciled_by_full_name"] = _user_display(active.get("reconciled_by"))
+		active["estimated_start_display"] = _relative_start_display(active.get("estimated_start"))
+		active["estimated_duration_display"] = active.get("estimated_duration") or active.get("duration_display") or ""
 		active["current_supplier_name"] = _supplier_name(active.get("current_supplier")) if active.get("current_supplier") else ""
 
 	queued = frappe.get_all(

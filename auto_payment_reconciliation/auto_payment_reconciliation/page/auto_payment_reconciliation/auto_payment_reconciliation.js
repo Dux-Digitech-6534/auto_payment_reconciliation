@@ -19,6 +19,7 @@ class AutoPaymentReconciliationPage {
 		this.poller = null;
 		this.status = null;
 		this.company_control = null;
+		this.party_label = __("Supplier Name");
 		this.busy = false;
 
 		this.inject_styles();
@@ -31,7 +32,7 @@ class AutoPaymentReconciliationPage {
 	inject_styles() {
 		if (document.getElementById("apr-inline-style")) return;
 		const css = `
-			.apr-page{padding-bottom:24px}.apr-title-row,.apr-layout,.apr-section-head,.apr-bottom-actions,.apr-page-actions,.apr-filters{display:flex;gap:10px}.apr-title-row{align-items:center;justify-content:space-between;margin-bottom:12px}.apr-breadcrumb{color:var(--text-color);font-size:16px;font-weight:600}.apr-muted,.apr-help{color:var(--text-muted);font-size:12px}.apr-layout{align-items:flex-start}.apr-main{flex:1 1 auto;min-width:0}.apr-side{flex:0 0 300px;position:sticky;top:12px}.apr-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:8px;margin-bottom:12px;padding:14px}.apr-section-title{font-size:12px;font-weight:700;letter-spacing:.04em;margin-bottom:10px;text-transform:uppercase}.apr-company-control{max-width:420px}.apr-filters{align-items:center;flex-wrap:wrap;margin:12px 0}.apr-filters .form-control{max-width:205px}.apr-check{align-items:center;color:var(--text-color);display:flex;font-size:12px;gap:6px;margin:0;min-height:32px}.apr-table-wrap{overflow-x:auto}.apr-table{background:var(--card-bg);font-size:12px;margin-bottom:0;white-space:nowrap}.apr-table thead th{background:var(--fg-color);border-color:var(--border-color);color:var(--text-muted);font-weight:600;vertical-align:middle}.apr-table tbody td{border-color:var(--border-color);vertical-align:middle}.apr-table tbody tr:hover{background:var(--highlight-color)}.apr-table tbody tr.apr-selected-row{background:#e7f1ff}.apr-select-col{text-align:center;width:34px}.apr-supplier-id{color:var(--text-muted)}.apr-diff-zero{color:var(--green-600);font-weight:600}.apr-diff-nonzero{color:var(--red-600);font-weight:600}.apr-badge,.apr-status-pill,.apr-queue-badge{border-radius:999px;display:inline-flex;font-size:11px;font-weight:600;line-height:1;padding:5px 8px}.apr-match-exact-match,.apr-allocation-auto-allocated,.apr-allocation-completed{background:var(--green-100);color:var(--green-700)}.apr-match-partial-match{background:var(--yellow-100);color:var(--yellow-700)}.apr-match-needs-review,.apr-allocation-error,.apr-allocation-failed{background:var(--red-100);color:var(--red-700)}.apr-allocation-ready-for-allocation,.apr-allocation-reconciled,.apr-allocation-running,.apr-allocation-queued{background:var(--blue-100);color:var(--blue-700)}.apr-allocation-pending-review,.apr-allocation-not-started,.apr-allocation-waiting{background:var(--gray-100);color:var(--gray-700)}.apr-bottom-actions{justify-content:flex-end;margin-top:12px}.apr-status-body{display:grid;gap:8px}.apr-status-line{align-items:center;display:grid;gap:10px;grid-template-columns:105px minmax(0,1fr);min-width:0}.apr-status-label{color:var(--text-muted);font-size:11px}.apr-status-value{font-size:12px;font-weight:600;min-width:0;text-align:right}.apr-ellipsis{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apr-status-pill{align-items:center;gap:6px;justify-content:flex-end}.apr-status-dot{border-radius:50%;display:inline-block;height:8px;width:8px}.apr-status-running,.apr-status-completed{color:var(--green-700)}.apr-status-running .apr-status-dot,.apr-status-completed .apr-status-dot{background:var(--green-500,#16a34a)}.apr-status-queued,.apr-status-waiting{color:var(--blue-700)}.apr-status-queued .apr-status-dot,.apr-status-waiting .apr-status-dot{background:var(--blue-500,#2563eb)}.apr-status-failed{color:var(--red-700)}.apr-status-failed .apr-status-dot{background:var(--red-500,#dc2626)}.apr-status-not-started{color:var(--gray-700)}.apr-status-not-started .apr-status-dot{background:var(--gray-500,#6b7280)}.apr-progress-wrap{display:grid;gap:6px}.apr-progress-head{align-items:center;display:flex;font-size:12px;justify-content:space-between}.apr-progress-head span{color:var(--text-muted);font-size:11px}.apr-progress-head strong{font-size:12px}.apr-progress{background:var(--control-bg);border-radius:999px;height:8px;overflow:hidden}.apr-progress-bar{background:var(--green-500,#16a34a);height:8px;transition:width .2s ease;width:0}.apr-remaining{color:var(--orange-600,#c2410c);font-weight:700}.apr-queue-message{margin-top:10px}.apr-queue-body{display:grid;gap:10px}.apr-queue-row{display:grid;gap:5px}.apr-queue-main{align-items:start;display:grid;gap:8px;grid-template-columns:24px minmax(0,1fr)}.apr-queue-position{align-items:center;background:var(--blue-500,#2563eb);border-radius:50%;color:#fff;display:inline-flex;font-size:12px;font-weight:700;height:24px;justify-content:center;width:24px}.apr-queue-company{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apr-queue-requested,.apr-queue-time{color:var(--text-muted);font-size:11px}.apr-queue-badge{background:var(--blue-100);color:var(--blue-700);justify-self:start;padding:4px 8px}.apr-dialog-tabs{border-bottom:1px solid var(--border-color);display:flex;gap:4px;margin-bottom:14px}.apr-tab{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--text-muted);font-weight:600;padding:8px 12px}.apr-tab.active{border-bottom-color:var(--primary);color:var(--text-color)}.apr-summary-grid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}.apr-summary-item{border:1px solid var(--border-color);border-radius:8px;padding:10px}.apr-summary-item span{color:var(--text-muted);display:block;font-size:12px;margin-bottom:4px}.apr-summary-item strong{font-size:13px;word-break:break-word}.apr-doc-link{color:var(--blue-600);font-weight:600;text-decoration:none}.apr-doc-link:hover{text-decoration:underline}@media(max-width:1100px){.apr-layout{flex-direction:column}.apr-side{position:static;width:100%}}@media(max-width:768px){.apr-title-row,.apr-page-actions,.apr-bottom-actions{align-items:stretch;flex-direction:column}.apr-filters .form-control{max-width:none;width:100%}.apr-summary-grid{grid-template-columns:1fr}}
+			.apr-page{padding-bottom:24px}.apr-title-row,.apr-section-head,.apr-bottom-actions,.apr-page-actions,.apr-filters{display:flex;gap:10px}.apr-title-row{align-items:center;justify-content:space-between;margin-bottom:12px}.apr-breadcrumb{color:var(--text-color);font-size:16px;font-weight:600}.apr-muted,.apr-help{color:var(--text-muted);font-size:12px}.apr-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:8px;margin-bottom:12px;padding:14px}.apr-section-title{font-size:12px;font-weight:700;letter-spacing:.04em;margin-bottom:10px;text-transform:uppercase}.apr-company-control{max-width:420px}.apr-status-banner{background:#eef6ff;border:1px solid #cfe5ff;border-radius:8px;margin-bottom:12px;padding:14px}.apr-status-banner.apr-banner-completed{background:#effaf2;border-color:#cfeedd}.apr-status-banner.apr-banner-failed{background:#fff1f1;border-color:#ffd2d2}.apr-status-banner.apr-banner-neutral{background:var(--card-bg);border-color:var(--border-color)}.apr-banner-head{align-items:flex-start;display:flex;gap:12px;justify-content:space-between;margin-bottom:10px}.apr-banner-title{font-size:14px;font-weight:700}.apr-banner-subtitle{color:var(--text-muted);font-size:12px;margin-top:3px}.apr-banner-grid{display:grid;gap:10px;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:12px}.apr-banner-item span{color:var(--text-muted);display:block;font-size:11px;margin-bottom:2px}.apr-banner-item strong{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apr-status-pill,.apr-queue-badge,.apr-badge{border-radius:999px;display:inline-flex;font-size:11px;font-weight:600;line-height:1;padding:5px 8px}.apr-status-pill{align-items:center;gap:6px}.apr-status-dot{border-radius:50%;display:inline-block;height:8px;width:8px}.apr-status-running,.apr-status-completed{color:var(--green-700)}.apr-status-running .apr-status-dot,.apr-status-completed .apr-status-dot{background:var(--green-500,#16a34a)}.apr-status-queued,.apr-status-waiting{color:var(--blue-700)}.apr-status-queued .apr-status-dot,.apr-status-waiting .apr-status-dot{background:var(--blue-500,#2563eb)}.apr-status-failed{color:var(--red-700)}.apr-status-failed .apr-status-dot{background:var(--red-500,#dc2626)}.apr-status-not-started{color:var(--gray-700)}.apr-status-not-started .apr-status-dot{background:var(--gray-500,#6b7280)}.apr-progress-head{align-items:center;display:flex;font-size:12px;justify-content:space-between}.apr-progress-head span{color:var(--text-muted);font-size:11px}.apr-progress-head strong{font-size:12px}.apr-progress{background:rgba(255,255,255,.7);border-radius:999px;height:8px;overflow:hidden}.apr-progress-bar{background:var(--blue-500,#2563eb);height:8px;transition:width .2s ease;width:0}.apr-remaining{color:var(--orange-600,#c2410c);font-weight:700}.apr-queue-strip{background:var(--card-bg);border:1px solid var(--border-color);border-radius:8px;margin-bottom:12px;padding:12px 14px}.apr-queue-head{align-items:center;display:flex;justify-content:space-between;margin-bottom:8px}.apr-queue-body{display:grid;gap:8px}.apr-queue-row{align-items:center;border-top:1px solid var(--border-color);display:grid;gap:10px;grid-template-columns:30px minmax(0,1fr) auto;padding-top:8px}.apr-queue-row:first-child{border-top:0;padding-top:0}.apr-queue-position{align-items:center;background:var(--blue-500,#2563eb);border-radius:50%;color:#fff;display:inline-flex;font-size:12px;font-weight:700;height:24px;justify-content:center;width:24px}.apr-queue-company{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.apr-queue-requested,.apr-queue-time{color:var(--text-muted);font-size:11px}.apr-queue-badge{background:var(--blue-100);color:var(--blue-700);white-space:nowrap}.apr-filters{align-items:center;flex-wrap:wrap;margin:12px 0}.apr-filters .form-control{max-width:205px}.apr-check{align-items:center;color:var(--text-color);display:flex;font-size:12px;gap:6px;margin:0;min-height:32px}.apr-table-wrap{overflow-x:auto}.apr-table{background:var(--card-bg);font-size:12px;margin-bottom:0;white-space:nowrap}.apr-table thead th{background:var(--fg-color);border-color:var(--border-color);color:var(--text-muted);font-weight:600;vertical-align:middle}.apr-table tbody td{border-color:var(--border-color);vertical-align:middle}.apr-table tbody tr:hover{background:var(--highlight-color)}.apr-table tbody tr.apr-selected-row{background:#e7f1ff}.apr-select-col{text-align:center;width:34px}.apr-diff-zero{color:var(--green-600);font-weight:600}.apr-diff-nonzero{color:var(--red-600);font-weight:600}.apr-match-exact-match,.apr-allocation-auto-allocated,.apr-allocation-completed{background:var(--green-100);color:var(--green-700)}.apr-match-partial-match{background:var(--yellow-100);color:var(--yellow-700)}.apr-match-needs-review,.apr-allocation-error,.apr-allocation-failed{background:var(--red-100);color:var(--red-700)}.apr-allocation-ready-for-allocation,.apr-allocation-reconciled,.apr-allocation-running,.apr-allocation-queued{background:var(--blue-100);color:var(--blue-700)}.apr-allocation-pending-review,.apr-allocation-not-started,.apr-allocation-waiting{background:var(--gray-100);color:var(--gray-700)}.apr-bottom-actions{justify-content:flex-end;margin-top:12px}.apr-dialog-tabs{border-bottom:1px solid var(--border-color);display:flex;gap:4px;margin-bottom:14px}.apr-tab{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--text-muted);font-weight:600;padding:8px 12px}.apr-tab.active{border-bottom-color:var(--primary);color:var(--text-color)}.apr-summary-grid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}.apr-summary-item{border:1px solid var(--border-color);border-radius:8px;padding:10px}.apr-summary-item span{color:var(--text-muted);display:block;font-size:12px;margin-bottom:4px}.apr-summary-item strong{font-size:13px;word-break:break-word}.apr-doc-link{color:var(--blue-600);font-weight:600;text-decoration:none}.apr-doc-link:hover{text-decoration:underline}@media(max-width:1100px){.apr-banner-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:768px){.apr-title-row,.apr-page-actions,.apr-bottom-actions{align-items:stretch;flex-direction:column}.apr-filters .form-control{max-width:none;width:100%}.apr-summary-grid,.apr-banner-grid{grid-template-columns:1fr}.apr-queue-row{grid-template-columns:30px minmax(0,1fr)}.apr-queue-badge{grid-column:2}}
 		`;
 		$(`<style id="apr-inline-style">${css}</style>`).appendTo("head");
 	}
@@ -51,78 +52,73 @@ class AutoPaymentReconciliationPage {
 					</div>
 				</div>
 
-				<div class="apr-layout">
-					<div class="apr-main">
-						<section class="apr-card apr-company-section">
-							<div class="apr-section-title">${__("Company Selection")}</div>
-							<div class="apr-company-control"></div>
-							<div class="apr-help">${__("Company is fetched from ERPNext Company Master.")}</div>
-						</section>
+				<section class="apr-status-banner apr-banner-neutral">
+					<div class="apr-section-title">${__("Current Reconciliation")}</div>
+					<div class="apr-status-banner-body"></div>
+					<div class="apr-help">${__("Only one company reconciliation at a time. Next starts automatically.")}</div>
+				</section>
 
-						<section class="apr-card">
-							<div class="apr-section-head">
-								<div>
-									<div class="apr-section-title">${__("Supplier-wise Unreconciled Entries")}</div>
-									<div class="apr-help">${__("Suppliers are automatically fetched from ERPNext Supplier Master. No manual supplier selection required.")}</div>
-								</div>
-							</div>
+				<section class="apr-queue-strip">
+					<div class="apr-queue-head">
+						<div class="apr-section-title">${__("Company Queue")}</div>
+					</div>
+					<div class="apr-queue-body"></div>
+				</section>
 
-							<div class="apr-filters">
-								<input class="form-control apr-filter-search" type="text" placeholder="${__("Search Supplier")}">
-								<select class="form-control apr-filter-status">
-									<option value="">${__("All Match Statuses")}</option>
-									<option value="Exact Match">${__("Exact Match")}</option>
-									<option value="Partial Match">${__("Partial Match")}</option>
-									<option value="Needs Review">${__("Needs Review")}</option>
-								</select>
-								<input class="form-control apr-filter-amount" type="text" placeholder="${__("Amount Range")}">
-								<input class="form-control apr-filter-date" type="text" placeholder="${__("Date Range")}">
-								<label class="apr-check">
-									<input type="checkbox" class="apr-filter-exact"> ${__("Show Only Exact Matches")}
-								</label>
-							</div>
+				<section class="apr-card apr-company-section">
+					<div class="apr-section-title">${__("Company Selection")}</div>
+					<div class="apr-company-control"></div>
+					<div class="apr-help">${__("Company is fetched from ERPNext Company Master.")}</div>
+				</section>
 
-							<div class="apr-table-wrap">
-								<table class="table table-bordered apr-table">
-									<thead>
-										<tr>
-											<th class="apr-select-col"><input type="checkbox" class="apr-select-visible"></th>
-											<th>${__("Supplier Name")}</th>
-											<th>${__("Supplier ID")}</th>
-											<th>${__("Invoices")}</th>
-											<th>${__("Payments")}</th>
-											<th>${__("Invoice Amt.")}</th>
-											<th>${__("Payment Amt.")}</th>
-											<th>${__("Difference")}</th>
-											<th>${__("Match Status")}</th>
-											<th>${__("Allocation Status")}</th>
-											<th>${__("Action")}</th>
-										</tr>
-									</thead>
-									<tbody class="apr-table-body"></tbody>
-								</table>
-							</div>
-
-							<div class="apr-bottom-actions">
-								<button class="btn btn-default btn-sm apr-select-exact">${__("Select All Exact Matches")}</button>
-								<button class="btn btn-default btn-sm apr-export" disabled>${__("Export")}</button>
-							</div>
-						</section>
+				<section class="apr-card">
+					<div class="apr-section-head">
+						<div>
+							<div class="apr-section-title">${__("Supplier-wise Unreconciled Entries")}</div>
+							<div class="apr-help">${__("Suppliers are automatically fetched from ERPNext Supplier Master. No manual supplier selection required.")}</div>
+						</div>
 					</div>
 
-					<aside class="apr-side">
-						<section class="apr-card apr-status-card">
-							<div class="apr-section-title">${__("Current Reconciliation")}</div>
-							<div class="apr-status-body"></div>
-							<div class="apr-help apr-queue-message">${__("Only one company reconciliation at a time. Next starts automatically.")}</div>
-						</section>
+					<div class="apr-filters">
+						<input class="form-control apr-filter-search" type="text" placeholder="${__("Search Supplier")}">
+						<select class="form-control apr-filter-status">
+							<option value="">${__("All Match Statuses")}</option>
+							<option value="Exact Match">${__("Exact Match")}</option>
+							<option value="Partial Match">${__("Partial Match")}</option>
+							<option value="Needs Review">${__("Needs Review")}</option>
+						</select>
+						<input class="form-control apr-filter-amount" type="text" placeholder="${__("Amount Range")}">
+						<input class="form-control apr-filter-date" type="text" placeholder="${__("Date Range")}">
+						<label class="apr-check">
+							<input type="checkbox" class="apr-filter-exact"> ${__("Show Only Exact Matches")}
+						</label>
+					</div>
 
-						<section class="apr-card apr-queue-card">
-							<div class="apr-section-title">${__("Company Queue")}</div>
-							<div class="apr-queue-body"></div>
-						</section>
-					</aside>
-				</div>
+					<div class="apr-table-wrap">
+						<table class="table table-bordered apr-table">
+							<thead>
+								<tr>
+									<th class="apr-select-col"><input type="checkbox" class="apr-select-visible"></th>
+									<th class="apr-party-name-label">${this.party_label}</th>
+									<th>${__("Invoices")}</th>
+									<th>${__("Payments")}</th>
+									<th>${__("Invoice Amt.")}</th>
+									<th>${__("Payment Amt.")}</th>
+									<th>${__("Difference")}</th>
+									<th>${__("Match Status")}</th>
+									<th>${__("Allocation Status")}</th>
+									<th>${__("Action")}</th>
+								</tr>
+							</thead>
+							<tbody class="apr-table-body"></tbody>
+						</table>
+					</div>
+
+					<div class="apr-bottom-actions">
+						<button class="btn btn-default btn-sm apr-select-exact">${__("Select All Exact Matches")}</button>
+						<button class="btn btn-default btn-sm apr-export" disabled>${__("Export")}</button>
+					</div>
+				</section>
 			</div>
 		`);
 	}
@@ -140,6 +136,7 @@ class AutoPaymentReconciliationPage {
 			render_input: true,
 		});
 		this.company_control.set_value(frappe.defaults.get_default("company"));
+		this.wrapper.find(".apr-party-name-label").text(this.party_label);
 	}
 
 	bind_events() {
@@ -292,7 +289,7 @@ class AutoPaymentReconciliationPage {
 	render_table() {
 		const body = this.wrapper.find(".apr-table-body");
 		if (!this.filtered_rows.length) {
-			body.html(`<tr><td colspan="11" class="text-muted text-center">${__("No unreconciled entries found")}</td></tr>`);
+			body.html(`<tr><td colspan="10" class="text-muted text-center">${__("No unreconciled entries found")}</td></tr>`);
 			this.update_action_state();
 			return;
 		}
@@ -308,7 +305,6 @@ class AutoPaymentReconciliationPage {
 								<input type="checkbox" class="apr-row-check" data-supplier="${frappe.utils.escape_html(row.supplier)}" ${checked ? "checked" : ""}>
 							</td>
 							<td><strong>${frappe.utils.escape_html(row.supplier_name || row.supplier)}</strong></td>
-							<td><span class="apr-supplier-id">${frappe.utils.escape_html(row.supplier_id || row.supplier)}</span></td>
 							<td>${cint(row.invoices_count)}</td>
 							<td>${cint(row.payments_count)}</td>
 							<td>${this.currency_value(row.invoice_amount)}</td>
@@ -572,7 +568,7 @@ class AutoPaymentReconciliationPage {
 				${this.details_table(["Invoice Type", "Invoice Number", "Posting Date", "Due Date", "Outstanding Amount", "Currency", "Account"], invoice_rows)}
 			</div>
 			<div class="apr-tab-panel hide" data-panel="payments">
-				${this.details_table(["Payment Type", "Reference Name", "Posting Date", "Unallocated Amount", "Currency", "Account"], payment_rows)}
+				${this.details_table(["Payment Document", "Reference Name", "Posting Date", "Unallocated Amount", "Currency", "Account"], payment_rows)}
 			</div>
 		`;
 	}
@@ -644,25 +640,90 @@ class AutoPaymentReconciliationPage {
 		this.status = status || {};
 		const active = this.status.active_run || this.status.active || {};
 		const queue = this.status.queue || [];
-		const progress = active.status === "Completed" ? 100 : Math.min(Math.max(flt(active.progress_percent), 0), 100);
-		const display_status = active.status === "Draft" ? __("Not Started") : active.status || __("Not Started");
-		const body = this.wrapper.find(".apr-status-body");
+		const status_value = active.status || "Not Started";
+		const progress = status_value === "Completed" ? 100 : Math.min(Math.max(flt(active.progress_percent), 0), 100);
+		const banner = this.wrapper.find(".apr-status-banner");
+		const body = this.wrapper.find(".apr-status-banner-body");
 		const company = active.company || this.get_company() || "";
-		const started_by = active.started_by_full_name || active.started_by || "";
 		const current_supplier = active.current_supplier_name || active.current_supplier || "";
-		const processed = `${cint(active.processed_entries)} / ${cint(active.total_entries)} ${__("entries")}`;
+		const processed = `${cint(active.processed_entries)} / ${cint(active.total_entries)} ${__("suppliers")}`;
 
 		this.busy = ["Queued", "Running"].includes(active.status) && active.company === this.get_company();
 		this.update_action_state();
 
+		banner.removeClass("apr-banner-running apr-banner-queued apr-banner-completed apr-banner-failed apr-banner-neutral");
+
+		if (!active.name && !active.status) {
+			banner.addClass("apr-banner-neutral");
+			body.html(`<div class="apr-muted">${__("No active reconciliation.")}</div>`);
+			this.render_queue(queue);
+			return;
+		}
+
+		banner.addClass(`apr-banner-${String(status_value).toLowerCase().replace(/\s+/g, "-")}`);
+
+		let title = `${company || __("Company")} — ${__("Reconciliation")} ${frappe.utils.escape_html(status_value)}`;
+		let subtitle = "";
+		let detail_html = "";
+
+		if (status_value === "Running") {
+			title = `${company} — ${__("Reconciliation in Progress")}`;
+			subtitle = `${__("Started by")}: ${frappe.utils.escape_html(active.started_by_full_name || active.started_by || "")} · ${this.datetime_value(active.started_on)}`;
+			detail_html = `
+				${this.banner_item(__("Current Supplier"), current_supplier)}
+				${this.banner_item(__("Processed"), processed)}
+				${this.banner_item(__("Remaining Time"), active.remaining_time || "", "apr-remaining")}
+				${this.banner_item(__("Last Updated"), this.datetime_value(active.last_updated_on))}
+			`;
+		} else if (status_value === "Queued") {
+			title = `${company} — ${__("Reconciliation Queued")}`;
+			subtitle = `${__("Requested by")}: ${frappe.utils.escape_html(active.requested_by_full_name || active.requested_by || "")}`;
+			detail_html = `
+				${this.banner_item(__("Queue Position"), active.queue_position || "")}
+				${this.banner_item(__("Estimated Start"), active.estimated_start_display || this.relative_time(active.estimated_start) || "")}
+				${this.banner_item(__("Estimated Duration"), active.estimated_duration_display || active.estimated_duration || "")}
+				${this.banner_item(__("Requested On"), this.datetime_value(active.requested_on))}
+			`;
+		} else if (status_value === "Completed") {
+			title = `${company} — ${__("Reconciliation Completed")}`;
+			subtitle = `${__("Reconciled by")}: ${frappe.utils.escape_html(active.reconciled_by_full_name || active.reconciled_by || "")}`;
+			detail_html = `
+				${this.banner_item(__("Completed On"), this.datetime_value(active.completed_on))}
+				${this.banner_item(__("Time Taken"), active.duration_display || "")}
+				${this.banner_item(__("Processed"), `${cint(active.total_entries)} / ${cint(active.total_entries)} ${__("suppliers")}`)}
+				${this.banner_item(__("Progress"), "100%")}
+			`;
+		} else if (status_value === "Failed") {
+			title = `${company} — ${__("Reconciliation Failed")}`;
+			subtitle = `${__("Error")}: ${frappe.utils.escape_html(active.error_log || "")}`;
+			detail_html = `
+				${this.banner_item(__("Time Taken"), active.duration_display || "")}
+				${this.banner_item(__("Completed On"), this.datetime_value(active.completed_on))}
+				${this.banner_item(__("Processed"), processed)}
+				${this.banner_item(__("Progress"), `${progress}%`)}
+			`;
+		} else {
+			title = `${company || __("Company")} — ${__("No active reconciliation")}`;
+			subtitle = __("No active reconciliation.");
+			detail_html = `
+				${this.banner_item(__("Status"), status_value === "Draft" ? __("Not Started") : status_value)}
+				${this.banner_item(__("Company"), company)}
+				${this.banner_item(__("Processed"), processed)}
+				${this.banner_item(__("Progress"), `${progress}%`)}
+			`;
+		}
+
 		body.html(`
-			${this.compact_line(__("Status"), this.status_pill(display_status), { raw: true })}
-			${this.compact_line(__("Company"), company, { value_class: "apr-ellipsis", title: company })}
-			${this.compact_line(__("Started By"), started_by, { value_class: "apr-ellipsis", title: started_by })}
-			${this.compact_line(__("Current Supplier"), current_supplier, { value_class: "apr-ellipsis", title: current_supplier })}
-			${this.compact_line(__("Processed"), processed)}
-			${this.progress_line(progress)}
-			${this.compact_line(__("Remaining Time"), active.remaining_time || "", { value_class: "apr-remaining" })}
+			<div class="apr-banner-head">
+				<div>
+					<div class="apr-banner-title">${frappe.utils.escape_html(title)}</div>
+					<div class="apr-banner-subtitle">${subtitle}</div>
+				</div>
+				${this.status_pill(status_value === "Draft" ? __("Not Started") : status_value)}
+			</div>
+			<div class="apr-progress-head"><span>${__("Progress")}</span><strong>${progress}% ${__("complete")}</strong></div>
+			<div class="apr-progress"><div class="apr-progress-bar"></div></div>
+			<div class="apr-banner-grid">${detail_html}</div>
 		`);
 		this.wrapper.find(".apr-progress-bar").css("width", `${progress || 0}%`);
 		this.render_queue(queue);
@@ -684,38 +745,24 @@ class AutoPaymentReconciliationPage {
 		const duration = row.estimated_duration_display || row.estimated_duration || "";
 		return `
 			<div class="apr-queue-row">
-				<div class="apr-queue-main">
-					<span class="apr-queue-position">${frappe.utils.escape_html(position)}</span>
-					<div>
-						<div class="apr-queue-company" title="${frappe.utils.escape_html(company)}">${frappe.utils.escape_html(company)}</div>
-						<div class="apr-queue-requested">${__("Requested by")}: ${frappe.utils.escape_html(requested_by)}</div>
-						<div class="apr-queue-badge">${frappe.utils.escape_html(status)}</div>
-						<div class="apr-queue-time">${__("Start")}: ${frappe.utils.escape_html(start)} | ${__("Est.")}: ${frappe.utils.escape_html(duration)}</div>
-					</div>
+				<span class="apr-queue-position">${frappe.utils.escape_html(position)}</span>
+				<div>
+					<div class="apr-queue-company" title="${frappe.utils.escape_html(company)}">${frappe.utils.escape_html(company)}</div>
+					<div class="apr-queue-requested">${__("Requested by")}: ${frappe.utils.escape_html(requested_by)}</div>
+					<div class="apr-queue-time">${__("Start")}: ${frappe.utils.escape_html(start)} | ${__("Est.")}: ${frappe.utils.escape_html(duration)}</div>
 				</div>
+				<div class="apr-queue-badge">${frappe.utils.escape_html(status)}</div>
 			</div>
 		`;
 	}
 
-	progress_line(progress) {
-		return `
-			<div class="apr-progress-wrap">
-				<div class="apr-progress-head"><span>${__("Progress")}</span><strong>${progress || 0}%</strong></div>
-				<div class="apr-progress"><div class="apr-progress-bar"></div></div>
-			</div>
-		`;
+	banner_item(label, value, value_class = "") {
+		return `<div class="apr-banner-item"><span>${frappe.utils.escape_html(label)}</span><strong class="${value_class}">${frappe.utils.escape_html(value || "")}</strong></div>`;
 	}
 
 	status_pill(status) {
 		const key = String(status || __("Not Started")).toLowerCase().replace(/\s+/g, "-");
 		return `<span class="apr-status-pill apr-status-${frappe.utils.escape_html(key)}"><span class="apr-status-dot"></span>${frappe.utils.escape_html(status)}</span>`;
-	}
-
-	compact_line(label, value, options = {}) {
-		const value_class = options.value_class || "";
-		const title = options.title ? ` title="${frappe.utils.escape_html(options.title)}"` : "";
-		const display = options.raw ? value || "" : frappe.utils.escape_html(value || "");
-		return `<div class="apr-status-line"><span class="apr-status-label">${frappe.utils.escape_html(label)}</span><strong class="apr-status-value ${value_class}"${title}>${display}</strong></div>`;
 	}
 
 	relative_time(value) {

@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "company",
+  "payment_type",
   "payable_account",
   "default_advance_account",
   "date_section",
@@ -46,6 +47,16 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1
+  },
+  {
+   "default": "Pay",
+   "fieldname": "payment_type",
+   "fieldtype": "Select",
+   "label": "Payment Type",
+   "options": "Receive\nPay\nInternal Transfer",
+   "reqd": 1,
+   "hidden": 1,
+   "read_only": 1
   },
   {
    "fieldname": "payable_account",
@@ -186,9 +197,8 @@
   },
   {
    "fieldname": "current_supplier",
-   "fieldtype": "Link",
-   "label": "Current Supplier",
-   "options": "Supplier",
+   "fieldtype": "Data",
+   "label": "Current Party",
    "read_only": 1
   },
   {
