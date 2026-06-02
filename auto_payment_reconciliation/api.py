@@ -852,8 +852,9 @@ def _reconcile_supplier_for_run(run, supplier, user=None):
 		ended = now_datetime()
 		duration = _seconds_between(started, ended)
 
-		refreshed = _build_supplier_row(run.company, supplier, filters)
-		_update_child_row(row, refreshed)
+		# Recompute from fresh ERPNext native Payment Reconciliation data after posting.
+		# This refreshes invoice/payment counts, amounts, difference, statuses, and refs.
+		row = _refresh_supplier_row(run, supplier, filters)
 		row.allocation_status = "Reconciled"
 		row.reconciled_by = user
 		row.reconciled_on = ended
@@ -1268,5 +1269,11 @@ def get_reconciliation_status(run_name=None, company=None):
 	)
 	queue = [_queue_row(row, idx) for idx, row in enumerate(queued, start=1)]
 
-	return {"active_run": active, "active": active, "queue": queue}
+	status = {"active_run": active, "active": active, "queue": queue}
+	if run_name and frappe.db.exists(RUN_DOCTYPE, run_name):
+		run = frappe.get_doc(RUN_DOCTYPE, run_name)
+		run.check_permission("read")
+		status["rows"] = _supplier_rows(run)
+		status["currency"] = _company_currency(run.company)
+	return status
 

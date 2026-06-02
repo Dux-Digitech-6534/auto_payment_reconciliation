@@ -87,3 +87,9 @@ https://apps.duxdigitech.in/app/auto_payment_reconciliation
 ## Layout Note - 2026-06-01
 
 - Current Reconciliation and Company Queue were moved above Company Selection.
+
+## Post-Reconciliation Refresh Note - 2026-06-02
+
+- After each supplier is reconciled, `_reconcile_supplier_for_run()` calls `_refresh_supplier_row()`, which rebuilds the row through `_build_supplier_row()` using fresh ERPNext native Payment Reconciliation unreconciled data.
+- The refreshed fields include `invoices_count`, `payments_count`, `invoice_amount`, `payment_amount`, `difference`, `match_status`, `allocation_status`, `invoice_refs_json`, and `payment_refs_json`.
+- `get_reconciliation_status()` now returns the current run rows so the page polling refreshes the supplier-wise table after reconciliation, instead of keeping stale child-table values in the browser.

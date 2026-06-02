@@ -625,6 +625,7 @@ class AutoPaymentReconciliationPage {
 				company: this.get_company(),
 			},
 			callback: (r) => {
+				this.apply_polled_rows(r.message);
 				this.render_status(r.message);
 				if (this.should_poll(r.message)) {
 					if (!this.poller) this.poller = setInterval(() => this.refresh_status(), 4000);
@@ -634,6 +635,15 @@ class AutoPaymentReconciliationPage {
 				}
 			},
 		});
+	}
+
+	apply_polled_rows(message) {
+		if (!message || !Array.isArray(message.rows)) return;
+		const keep = new Set(this.get_selected_suppliers());
+		this.currency = message.currency || this.currency;
+		this.rows = message.rows || [];
+		this.selected = new Set(this.rows.filter((row) => keep.has(row.supplier)).map((row) => row.supplier));
+		this.apply_filters();
 	}
 
 	render_status(status) {
