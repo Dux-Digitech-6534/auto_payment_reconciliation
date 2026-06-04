@@ -235,6 +235,15 @@ def _apply_row_eligibility(values):
 	return values
 
 
+def _has_unreconciled_values(values):
+	return (
+		cint(values.get("invoices_count")) > 0
+		or cint(values.get("payments_count")) > 0
+		or flt(values.get("invoice_amount")) > 0
+		or flt(values.get("payment_amount")) > 0
+	)
+
+
 def _save_run_with_retry(run_name, update_fn, retries=1):
 	last_error = None
 	for _attempt in range(retries + 1):
@@ -638,7 +647,12 @@ def _update_child_row(row, values):
 
 
 def _supplier_rows(run):
-	return [_row_to_dict(row) for row in run.supplier_entries]
+	rows = []
+	for row in run.supplier_entries:
+		row_data = _row_to_dict(row)
+		if _has_unreconciled_values(row_data):
+			rows.append(row_data)
+	return rows
 
 
 def _refresh_supplier_row(run, supplier, filters):
@@ -672,7 +686,9 @@ def get_unreconciled_entries(company, filters=None):
 	if run.status not in {"Queued", "Running"}:
 		suppliers = _candidate_suppliers(company, filters)
 		for supplier in suppliers:
-			run.append("supplier_entries", _build_supplier_row(company, supplier, filters))
+			row_data = _build_supplier_row(company, supplier, filters)
+			if _has_unreconciled_values(row_data):
+				run.append("supplier_entries", row_data)
 
 		run.total_entries = len(run.supplier_entries)
 		run.last_updated_on = now_datetime()
@@ -1126,23 +1142,23 @@ def export_unreconciled_entries(run_name):
 			"Payment References JSON",
 		]
 	)
-	for row in run.supplier_entries:
+	for row in _supplier_rows(run):
 		writer.writerow(
 			[
-				row.supplier_name,
-				row.supplier_id,
-				row.invoices_count,
-				row.payments_count,
-				row.invoice_amount,
-				row.payment_amount,
-				row.difference,
-				row.match_status,
-				row.allocation_status,
-				row.reconciled_by,
-				row.reconciled_on,
-				row.duration_display,
-				row.invoice_refs_json,
-				row.payment_refs_json,
+				row.get("supplier_name"),
+				row.get("supplier_id"),
+				row.get("invoices_count"),
+				row.get("payments_count"),
+				row.get("invoice_amount"),
+				row.get("payment_amount"),
+				row.get("difference"),
+				row.get("match_status"),
+				row.get("allocation_status"),
+				row.get("reconciled_by"),
+				row.get("reconciled_on"),
+				row.get("duration_display"),
+				row.get("invoice_refs_json"),
+				row.get("payment_refs_json"),
 			]
 		)
 
@@ -1276,4 +1292,3 @@ def get_reconciliation_status(run_name=None, company=None):
 		status["rows"] = _supplier_rows(run)
 		status["currency"] = _company_currency(run.company)
 	return status
-

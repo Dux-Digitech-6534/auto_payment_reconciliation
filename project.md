@@ -11,8 +11,8 @@ The app provides a Frappe Desk Page where the user selects only Company. The sys
 - App name: `auto_payment_reconciliation`
 - Module: `Auto Payment Reconciliation`
 - Desk Page route: `auto_payment_reconciliation`
-- Browser URL: `https://apps.duxdigitech.in/app/auto_payment_reconciliation`
-- Frappe site name: `app.duxdigitech.in`
+- Browser URL: `https://rgipurchase.frappe.cloud/desk/auto_payment_reconciliation`
+- Frappe site name: `rgipurchase.frappe.cloud`
 - Bench path: `/home/dux/frappe-bench`
 - App path: `/home/dux/frappe-bench/apps/auto_payment_reconciliation`
 
@@ -116,6 +116,8 @@ The app does not directly edit `GL Entry`, Payment Ledger, or accounting balance
 - Queue and progress tracking are stored in `Auto Payment Reconciliation Run`.
 - Supplier rows are stored in `Auto Payment Reconciliation Supplier Entry`.
 - Run ID naming fix remains intact: `ABBR/APR/FY/0001` or `ABBR/LOC/APR/FY/0001`, never duplicated as `ABBR/ABBR/APR/FY/0001`.
+- Supplier rows are returned only when invoice count, payment count, invoice amount, or payment amount is non-zero.
+- View dialog invoice/payment document links open in a new browser tab.
 
 ## DocTypes
 
@@ -126,6 +128,13 @@ Stores run-level tracking: company, account metadata, status, requested/started/
 ### Auto Payment Reconciliation Supplier Entry
 
 Stores supplier-level tracking: selected flag, supplier, supplier name, internal supplier ID, invoice/payment counts and totals, difference, match status, allocation status, invoice/payment/allocation JSON, remarks, errors, reconciled user/date, and supplier duration.
+
+## Files Changed - 2026-06-04
+
+- `auto_payment_reconciliation/api.py`
+- `auto_payment_reconciliation/auto_payment_reconciliation/page/auto_payment_reconciliation/auto_payment_reconciliation.js`
+- `README.md`
+- `project.md`
 
 ## Files Changed - 2026-06-01
 
@@ -138,18 +147,20 @@ Stores supplier-level tracking: selected flag, supplier, supplier name, internal
 
 ## Testing Steps
 
-1. Open `https://apps.duxdigitech.in/app/auto_payment_reconciliation`.
+1. Open `https://rgipurchase.frappe.cloud/desk/auto_payment_reconciliation`.
 2. Verify only Company appears in Company Selection.
 3. Verify Payment Type is not visible.
 4. Click Get Unreconciled Entries and confirm supplier rows load automatically.
-5. Verify Supplier ID is not visible in the main table.
-6. Verify View opens Summary, Invoices, and Payments with clickable document links.
-7. Verify Select All Exact Matches selects only Exact Match rows.
-8. Verify Allocate works for eligible supplier rows.
-9. Verify Reconcile queues/runs through ERPNext native Payment Reconciliation.
-10. Verify the top blue banner updates progress/current supplier/remaining time while running.
-11. Verify the top queue section shows real queued companies or `No company is queued.`
-12. Verify no Pause or Cancel buttons appear.
+5. Verify suppliers with zero invoices, zero payments, zero invoice amount, and zero payment amount are not shown.
+6. Verify Supplier ID is not visible in the main table.
+7. Verify View opens Summary, Invoices, and Payments with clickable document links.
+8. Verify invoice/payment document links open in a new browser tab.
+9. Verify Select All Exact Matches selects only Exact Match rows.
+10. Verify Allocate works for eligible supplier rows.
+11. Verify Reconcile queues/runs through ERPNext native Payment Reconciliation.
+12. Verify the top blue banner updates progress/current supplier/remaining time while running.
+13. Verify the top queue section shows real queued companies or `No company is queued.`
+14. Verify no Pause or Cancel buttons appear.
 
 ## Manual Commands
 
@@ -158,8 +169,7 @@ Run manually from bench root:
 ```bash
 cd /home/dux/frappe-bench
 env/bin/pip install -e apps/auto_payment_reconciliation
-bench --site app.duxdigitech.in migrate
-bench --site app.duxdigitech.in clear-cache
+bench --site rgipurchase.frappe.cloud clear-cache
 bench restart
 ```
 

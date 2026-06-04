@@ -575,15 +575,31 @@ class AutoPaymentReconciliationPage {
 
 	doc_link(doctype, name) {
 		if (!doctype || !name) return frappe.utils.escape_html(name || "");
-		return `<a href="#" class="apr-doc-link" data-doctype="${frappe.utils.escape_html(doctype)}" data-name="${frappe.utils.escape_html(name)}">${frappe.utils.escape_html(name)}</a>`;
+		const href = this.form_link(doctype, name);
+		return `<a href="${frappe.utils.escape_html(href)}" class="apr-doc-link" data-doctype="${frappe.utils.escape_html(doctype)}" data-name="${frappe.utils.escape_html(name)}" target="_blank" rel="noopener noreferrer">${frappe.utils.escape_html(name)}</a>`;
+	}
+
+	form_link(doctype, name) {
+		const slug = String(doctype || "")
+			.trim()
+			.toLowerCase()
+			.replace(/\s+/g, "-");
+		return `/app/${encodeURIComponent(slug)}/${encodeURIComponent(name)}`;
 	}
 
 	open_doc_link(e) {
 		e.preventDefault();
+		const href = e.currentTarget.getAttribute("href");
+		if (href) {
+			const opened = window.open(href, "_blank", "noopener,noreferrer");
+			if (opened) opened.opener = null;
+			return;
+		}
 		const doctype = $(e.currentTarget).data("doctype");
 		const name = $(e.currentTarget).data("name");
 		if (doctype && name) {
-			frappe.set_route("Form", doctype, name);
+			const opened = window.open(this.form_link(doctype, name), "_blank", "noopener,noreferrer");
+			if (opened) opened.opener = null;
 		}
 	}
 
@@ -790,4 +806,3 @@ class AutoPaymentReconciliationPage {
 		return `<div class="apr-status-line"><span>${frappe.utils.escape_html(label)}</span><strong>${value || ""}</strong></div>`;
 	}
 }
-

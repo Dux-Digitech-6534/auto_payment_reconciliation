@@ -27,6 +27,22 @@ What changed:
 - Pause and Cancel actions were intentionally not added.
 - Live status polling remains active every 4 seconds while a run is queued or running.
 
+## Zero Row and Link Update - 2026-06-04
+
+Files changed in this update:
+
+- `auto_payment_reconciliation/api.py`
+- `auto_payment_reconciliation/auto_payment_reconciliation/page/auto_payment_reconciliation/auto_payment_reconciliation.js`
+- `README.md`
+- `project.md`
+
+What changed:
+
+- Supplier rows with zero invoices, zero payments, zero invoice amount, and zero payment amount are now filtered backend-side.
+- Initial load, status polling, and CSV export now return only suppliers with at least one unreconciled invoice or at least one unreconciled payment.
+- View dialog invoice and payment document links now open in a new browser tab with `target="_blank"` and `rel="noopener noreferrer"`.
+- The main supplier-wise table, Current Reconciliation banner, Company Queue, Company-only selection, hidden Payment Type behavior, Supplier ID hiding, native ERPNext reconciliation flow, Run ID naming, and post-reconciliation refresh behavior remain unchanged.
+
 ## Native ERPNext Reuse
 
 The app continues to use ERPNext native Payment Reconciliation logic for supplier/payables:
@@ -45,29 +61,29 @@ Run these manually from the bench root after pulling or editing the app:
 ```bash
 cd /home/dux/frappe-bench
 env/bin/pip install -e apps/auto_payment_reconciliation
-bench --site app.duxdigitech.in migrate
-bench --site app.duxdigitech.in clear-cache
+bench --site rgipurchase.frappe.cloud clear-cache
 bench restart
 ```
 
 ## Correct URL
 
 ```text
-https://apps.duxdigitech.in/app/auto_payment_reconciliation
+https://rgipurchase.frappe.cloud/desk/auto_payment_reconciliation
 ```
 
 ## Testing Steps
 
-1. Open `https://apps.duxdigitech.in/app/auto_payment_reconciliation`.
+1. Open `https://rgipurchase.frappe.cloud/desk/auto_payment_reconciliation`.
 2. Confirm Company Selection shows only Company.
 3. Confirm Payment Type, Party Type, Party, Payable Account, Receivable Account, and Default Advance Account are not visible.
 4. Select Company and click Get Unreconciled Entries.
-5. Confirm supplier-wise rows load automatically.
+5. Confirm supplier-wise rows load automatically and zero-zero suppliers are not shown.
 6. Confirm visible columns are Checkbox, Supplier Name, Invoices, Payments, Invoice Amt., Payment Amt., Difference, Match Status, Allocation Status, and Action.
 7. Confirm Supplier ID is not visible in the main table.
-8. Confirm filters, badges, red/green Difference, row selection, View, Allocate, Reconcile, and Export work.
-9. Start reconciliation and confirm the top blue banner updates progress, current supplier, processed count, remaining time, and queue.
-10. Confirm no Pause or Cancel controls are shown.
+8. Confirm View dialog invoice/payment links open a new browser tab.
+9. Confirm filters, badges, red/green Difference, row selection, View, Allocate, Reconcile, and Export work.
+10. Start reconciliation and confirm the top blue banner updates progress, current supplier, processed count, remaining time, and queue.
+11. Confirm no Pause or Cancel controls are shown.
 
 ## Known Notes
 
