@@ -19,12 +19,14 @@ class AutoPaymentReconciliationPage {
 		this.poller = null;
 		this.status = null;
 		this.company_control = null;
+		this.date_range_control = null;
 		this.party_label = __("Supplier Name");
 		this.busy = false;
 
 		this.inject_styles();
 		this.render();
 		this.make_company_control();
+		this.make_date_range_control();
 		this.bind_events();
 		this.refresh_status();
 	}
@@ -88,7 +90,7 @@ class AutoPaymentReconciliationPage {
 							<option value="Needs Review">${__("Needs Review")}</option>
 						</select>
 						<input class="form-control apr-filter-amount" type="text" placeholder="${__("Amount Range")}">
-						<input class="form-control apr-filter-date" type="text" placeholder="${__("Date Range")}">
+						<div class="apr-date-range-control"></div>
 						<label class="apr-check">
 							<input type="checkbox" class="apr-filter-exact"> ${__("Show Only Exact Matches")}
 						</label>
@@ -139,6 +141,19 @@ class AutoPaymentReconciliationPage {
 		this.wrapper.find(".apr-party-name-label").text(this.party_label);
 	}
 
+	make_date_range_control() {
+		this.date_range_control = frappe.ui.form.make_control({
+			parent: this.wrapper.find(".apr-date-range-control"),
+			df: {
+				fieldtype: "DateRange",
+				fieldname: "date_range",
+				placeholder: __("Date Range"),
+			},
+			render_input: true,
+		});
+		this.date_range_control.$input.addClass("apr-filter-date").attr("placeholder", __("Date Range"));
+	}
+
 	bind_events() {
 		this.wrapper.on("click", ".apr-get", () => this.get_unreconciled_entries());
 		this.wrapper.on("click", ".apr-allocate", () => this.allocate_selected());
@@ -178,12 +193,17 @@ class AutoPaymentReconciliationPage {
 	}
 
 	get_filters() {
-		const date_range = this.parse_date_range(this.wrapper.find(".apr-filter-date").val());
+		const date_range = this.get_date_range();
 		return {
 			run_name: this.run_name,
 			from_date: date_range && date_range.from_date,
 			to_date: date_range && date_range.to_date,
 		};
+	}
+
+	get_date_range() {
+		const control_value = this.date_range_control && this.date_range_control.get_value();
+		return this.parse_date_range(control_value || this.wrapper.find(".apr-filter-date").val());
 	}
 
 	get_selected_suppliers() {
@@ -228,9 +248,9 @@ class AutoPaymentReconciliationPage {
 		const status = this.wrapper.find(".apr-filter-status").val();
 		const exact_only = this.wrapper.find(".apr-filter-exact").is(":checked");
 		const amount_range = this.parse_range(this.wrapper.find(".apr-filter-amount").val());
-		const date_range = this.parse_date_range(this.wrapper.find(".apr-filter-date").val());
+		const date_range = this.get_date_range();
 
-		this.filtered_rows = this.rows.filter((row) => {
+		this.filtered_rows = this.rows.map((row) => this.date_filtered_row(row, date_range)).filter(Boolean).filter((row) => {
 			const text = `${row.supplier_name || ""} ${row.supplier_id || ""} ${row.supplier || ""}`.toLowerCase();
 			if (search && !text.includes(search)) return false;
 			if (status && row.match_status !== status) return false;
@@ -239,7 +259,6 @@ class AutoPaymentReconciliationPage {
 				const amount = Math.max(flt(row.invoice_amount), flt(row.payment_amount));
 				if (amount < amount_range.min || amount > amount_range.max) return false;
 			}
-			if (date_range && !this.row_in_date_range(row, date_range)) return false;
 			return true;
 		});
 		this.render_table();
@@ -258,24 +277,69 @@ class AutoPaymentReconciliationPage {
 
 	parse_date_range(value) {
 		if (!value) return null;
+		if (Array.isArray(value)) {
+			const from_date = this.normalize_date(value[0]);
+			const to_date = this.normalize_date(value[1] || value[0]);
+			return from_date ? { from_date, to_date: to_date || from_date } : null;
+		}
+
+		const parsed = this.date_range_control && this.date_range_control.parse && this.date_range_control.parse(value);
+		if (Array.isArray(parsed)) return this.parse_date_range(parsed);
+
 		const parts = String(value)
 			.split(/\s+to\s+|,/i)
 			.map((part) => part.trim())
 			.filter(Boolean);
 		if (!parts.length) return null;
-		return { from_date: parts[0], to_date: parts[1] || parts[0] };
+		const from_date = this.normalize_date(parts[0]);
+		const to_date = this.normalize_date(parts[1] || parts[0]) || from_date;
+		return from_date ? { from_date, to_date } : null;
 	}
 
-	row_in_date_range(row, range) {
-		const refs = []
-			.concat(this.safe_json(row.invoice_refs_json))
-			.concat(this.safe_json(row.payment_refs_json));
-		if (!refs.length) return true;
-		return refs.some((ref) => {
-			const date = ref.posting_date || ref.due_date;
-			if (!date) return false;
-			return date >= range.from_date && date <= range.to_date;
-		});
+	normalize_date(value) {
+		if (!value) return null;
+		if (moment(value, "YYYY-MM-DD", true).isValid()) return value;
+		const parsed = frappe.datetime.user_to_str(value);
+		return parsed && parsed !== "Invalid date" ? parsed : null;
+	}
+
+	date_filtered_row(row, range) {
+		if (!range) return row;
+		const invoices = this.safe_json(row.invoice_refs_json).filter((ref) => this.ref_in_date_range(ref, range));
+		const payments = this.safe_json(row.payment_refs_json).filter((ref) => this.ref_in_date_range(ref, range));
+		if (!invoices.length && !payments.length) return null;
+
+		const invoice_amount = invoices.reduce((total, ref) => total + flt(ref.outstanding_amount), 0);
+		const payment_amount = payments.reduce((total, ref) => total + flt(ref.unallocated_amount), 0);
+		const difference = flt(invoice_amount - payment_amount);
+		const display_row = {
+			...row,
+			invoices_count: invoices.length,
+			payments_count: payments.length,
+			invoice_amount,
+			payment_amount,
+			difference,
+			invoice_refs_json: JSON.stringify(invoices),
+			payment_refs_json: JSON.stringify(payments),
+		};
+
+		if (invoice_amount > 0 && payment_amount > 0) {
+			display_row.match_status = Math.abs(difference) < 0.000001 ? "Exact Match" : "Partial Match";
+			if (!["Reconciled", "Error"].includes(display_row.allocation_status)) {
+				display_row.allocation_status = display_row.match_status === "Exact Match" ? "Auto Allocated" : "Ready for Allocation";
+			}
+		} else {
+			display_row.match_status = "Needs Review";
+			if (display_row.allocation_status !== "Reconciled") display_row.allocation_status = "Pending Review";
+		}
+
+		return display_row;
+	}
+
+	ref_in_date_range(ref, range) {
+		const date = this.normalize_date(ref.posting_date || ref.invoice_date || ref.due_date);
+		if (!date) return false;
+		return date >= range.from_date && date <= range.to_date;
 	}
 
 	safe_json(value) {
@@ -451,7 +515,7 @@ class AutoPaymentReconciliationPage {
 		}
 		frappe.call({
 			method: "auto_payment_reconciliation.api.export_unreconciled_entries",
-			args: { run_name: this.run_name },
+			args: { run_name: this.run_name, filters: this.get_filters() },
 			callback: (r) => {
 				if (!r.message) return;
 				const blob = new Blob([r.message.content], { type: r.message.content_type || "text/csv" });

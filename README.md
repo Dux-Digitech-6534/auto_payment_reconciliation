@@ -99,3 +99,9 @@ https://rgipurchase.frappe.cloud/desk/auto_payment_reconciliation
 - After each supplier is reconciled, `_reconcile_supplier_for_run()` calls `_refresh_supplier_row()`, which rebuilds the row through `_build_supplier_row()` using fresh ERPNext native Payment Reconciliation unreconciled data.
 - The refreshed fields include `invoices_count`, `payments_count`, `invoice_amount`, `payment_amount`, `difference`, `match_status`, `allocation_status`, `invoice_refs_json`, and `payment_refs_json`.
 - `get_reconciliation_status()` now returns the current run rows so the page polling refreshes the supplier-wise table after reconciliation, instead of keeping stale child-table values in the browser.
+
+## Date Range Filter Note - 2026-06-12
+
+- Date Range filter now applies backend-side to supplier-wise rows, View dialog, and Export.
+- The page uses Frappe's native DateRange control and sends normalized `from_date` / `to_date` values to backend calls.
+- Existing loaded rows are also filtered in the browser with recalculated visible counts and amounts for the selected range.

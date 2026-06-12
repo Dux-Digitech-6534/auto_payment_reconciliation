@@ -63,14 +63,26 @@ def _payment_context(filters):
 
 def _parse_filters(filters=None):
 	if not filters:
-		return frappe._dict()
-	if isinstance(filters, str):
-		return frappe._dict(json.loads(filters))
-	return frappe._dict(filters)
+		parsed = frappe._dict()
+	elif isinstance(filters, str):
+		parsed = frappe._dict(json.loads(filters))
+	else:
+		parsed = frappe._dict(filters)
+
+	parsed.from_date = _date_value(parsed.get("from_date"))
+	parsed.to_date = _date_value(parsed.get("to_date"))
+	if parsed.from_date and parsed.to_date and getdate(parsed.from_date) > getdate(parsed.to_date):
+		parsed.from_date, parsed.to_date = parsed.to_date, parsed.from_date
+	return parsed
 
 
 def _date_value(value):
-	return str(getdate(value)) if value else None
+	if not value:
+		return None
+	try:
+		return str(getdate(value))
+	except Exception:
+		return None
 
 
 def _active_statuses():
@@ -715,7 +727,8 @@ def get_supplier_details(company, supplier, filters=None):
 	run = frappe.get_doc(RUN_DOCTYPE, run_name) if run_name and frappe.db.exists(RUN_DOCTYPE, run_name) else None
 	row = _find_supplier_row(run, supplier) if run else None
 
-	if row:
+	use_cached_row = bool(row and run and _run_filters_match(run, filters))
+	if use_cached_row:
 		invoices = _invoice_refs(_json_loads(row.invoice_refs_json))
 		payments = _payment_refs(_json_loads(row.payment_refs_json))
 		summary = _row_to_dict(row)
@@ -1118,10 +1131,20 @@ def _start_next_queued_run():
 
 
 @frappe.whitelist()
-def export_unreconciled_entries(run_name):
+def export_unreconciled_entries(run_name, filters=None):
 	_require_page_access()
 	run = frappe.get_doc(RUN_DOCTYPE, run_name)
 	run.check_permission("read")
+	filters = _parse_filters(filters)
+	filters.run_name = run_name
+	if _run_filters_match(run, filters):
+		rows = _supplier_rows(run)
+	else:
+		rows = []
+		for supplier in _candidate_suppliers(run.company, filters):
+			row_data = _build_supplier_row(run.company, supplier, filters)
+			if _has_unreconciled_values(row_data):
+				rows.append(row_data)
 	output = StringIO()
 	writer = csv.writer(output)
 	writer.writerow(
@@ -1142,7 +1165,7 @@ def export_unreconciled_entries(run_name):
 			"Payment References JSON",
 		]
 	)
-	for row in _supplier_rows(run):
+	for row in rows:
 		writer.writerow(
 			[
 				row.get("supplier_name"),
